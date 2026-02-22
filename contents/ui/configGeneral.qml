@@ -9,18 +9,13 @@ import org.kde.kcmutils as KCM
 KCM.SimpleKCM {
     id: root
 
-    // ============================================================
-    // SAFE STORAGE FOR RECITER INDEX
-    // This prevents the ComboBox from resetting the setting to 0
-    // when the language (and thus the model) changes.
-    // ============================================================
+
     property int internalReciterIndex: 0
 
     // ============================================================
     // PROPERTY ALIASES
     // ============================================================
 
-    // Map the XML setting to our safe internal property
     property alias cfg_quranReciterIndex: root.internalReciterIndex
 
     // Location
@@ -39,8 +34,11 @@ KCM.SimpleKCM {
     property alias cfg_notifications: notificationsCheck.checked
     property alias cfg_preNotificationMinutes: preNotificationSpinBox.value
     property alias cfg_playPreAdhanSound: preAdhanSoundCheck.checked
-    property alias cfg_useDynamicFont: dynamicFontCheck.checked
+    property alias cfg_postNotificationMinutes: postNotificationSpinBox.value
+    property alias cfg_playPostAdhanSound: postAdhanSoundCheck.checked
     property alias cfg_showBackground: showBackgroundCheck.checked
+    property alias cfg_showCompactMediaButton: showCompactMediaCheck.checked
+    property alias cfg_enableQuran: enableQuranCheck.checked
 
     // Audio
     property alias cfg_adhanAudioPath: adhanPathField.text
@@ -162,7 +160,6 @@ KCM.SimpleKCM {
             id: methodCombo; Kirigami.FormData.label: i18n("Calculation Method:")
             model: ["Shia Ithna-Ansari", "University of Islamic Sciences, Karachi", "Islamic Society of North America", "Muslim World League", "Umm Al-Qura University, Makkah", "Egyptian General Authority of Survey", "Institute of Geophysics, University of Tehran", "Gulf Region", "Kuwait", "Qatar", "Majlis Ugama Islam Singapura, Singapore", "Union Organization islamic de France", "Diyanet Isleri Baskanligi, Turkey", "Spiritual Administration of Muslims of Russia", "Morocco"]
         }
-        }
         ComboBox { id: schoolCombo; Kirigami.FormData.label: i18n("School (Juristic):"); model: ["Shafi (Standard)", "Hanafi"] }
 
 
@@ -179,36 +176,79 @@ KCM.SimpleKCM {
             model: ["English", "Arabic"]
         }
         CheckBox { id: hourFormatCheck; text: i18n("Use 12-hour format (AM/PM)"); Kirigami.FormData.label: i18n("Time Format:") }
-        CheckBox { id: dynamicFontCheck; text: i18n("Fit text to width"); Kirigami.FormData.label: i18n("Appearance:") }
 
-        CheckBox { id: notificationsCheck; text: i18n("Show notification on prayer time"); Kirigami.FormData.label: i18n("Alerts:") }
+        Kirigami.Separator { Kirigami.FormData.label: i18n("Notifications"); Kirigami.FormData.isSection: true }
 
-        RowLayout {
-            Kirigami.FormData.label: i18n("Pre-Notification:")
-            SpinBox { id: preNotificationSpinBox; from: 0; to: 60 }
-            Label { text: i18n("minutes before") }
+        CheckBox {
+            id: notificationsCheck
+            text: i18n("Show notification on exact prayer time")
+            Kirigami.FormData.label: i18n("Main Alert:")
         }
-        CheckBox { id: preAdhanSoundCheck; text: i18n("Play sound for pre-Adhan reminder"); Kirigami.FormData.label: "" }
+
+        ColumnLayout {
+            Kirigami.FormData.label: i18n("Pre-Adhan:")
+            spacing: 0
+            RowLayout {
+                SpinBox { id: preNotificationSpinBox; from: 0; to: 60 }
+                Label { text: i18n("minutes before") }
+            }
+            CheckBox {
+                id: preAdhanSoundCheck
+                text: i18n("Play notification sound")
+                // UX Polish: Grays out if timer is set to 0
+                enabled: preNotificationSpinBox.value > 0
+            }
+        }
+
+        ColumnLayout {
+            Kirigami.FormData.label: i18n("Iqamah (Post-Adhan):")
+            spacing: 0
+            RowLayout {
+                SpinBox { id: postNotificationSpinBox; from: 0; to: 60 }
+                Label { text: i18n("minutes after") }
+            }
+            CheckBox {
+                id: postAdhanSoundCheck
+                text: i18n("Play notification sound")
+                // UX Polish: Grays out if timer is set to 0
+                enabled: postNotificationSpinBox.value > 0
+            }
+        }
+
+        // ==========================================
+        // WIDGET FEATURES
+        // ==========================================
+        Kirigami.Separator { Kirigami.FormData.label: i18n("Widget Features"); Kirigami.FormData.isSection: true }
+
+        ColumnLayout {
+            Kirigami.FormData.label: i18n("Quran:")
+            spacing: 0
+            CheckBox {
+                id: enableQuranCheck
+                text: i18n("Enable Quran Player & Daily Verse")
+            }
+            CheckBox {
+                id: showCompactMediaCheck
+                text: i18n("Show Play/Pause button in compact view")
+                // UX Polish: Grays out if Quran feature is entirely disabled
+                enabled: enableQuranCheck.checked
+            }
+        }
 
 
         // --- SECTION 3: AUDIO & ADHAN ---
         Kirigami.Separator { Kirigami.FormData.label: i18n("Audio & Adhan"); Kirigami.FormData.isSection: true }
 
-        // === FIXED COMBOBOX WITH SAFE PROXY ===
         ComboBox {
             id: reciterCombo
             Kirigami.FormData.label: i18n("Quran Reciter:")
 
-            // 1. Bind visual state to our SAFE property
             currentIndex: internalReciterIndex
 
-            // 2. Switch models based on language
             model: (languageCombo.currentIndex === 1) ? reciterNamesAr : reciterNamesEn
 
-            // 3. Only update the safe property when the user CLICKS
             onActivated: internalReciterIndex = currentIndex
 
-            // 4. THE FIX: If the model swaps and forces index to 0, force it back immediately
             onModelChanged: {
                 if (currentIndex !== internalReciterIndex) {
                     currentIndex = internalReciterIndex
